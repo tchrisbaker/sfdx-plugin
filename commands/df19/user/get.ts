@@ -23,6 +23,14 @@ export default class UserGet extends SfdxCommand {
       char: 'n',
       description: 'return users whose name contains this value',
     }),
+    email: flags.string({
+      char: 'e',
+      description: 'return users whose name contains this value',
+    }),
+    username: flags.string({
+      char: 'u',
+      description: 'return users whose name contains this value',
+    }),
     profile: flags.string({
       char: 'p',
       description: 'return users whose profile name contains this value',
@@ -41,11 +49,7 @@ export default class UserGet extends SfdxCommand {
   protected static requiresUsername = true;
 
   public async run(): Promise<AnyJson> {
-    /*interface Account {
-        Id: string;
-        Name: string;
-    }*/
-    // 1) build query
+   
     const username = this.org.getUsername();
 
     const fields = {
@@ -57,11 +61,13 @@ export default class UserGet extends SfdxCommand {
         'Username',
         'Id',
         'IsActive',
+        'Profile.Name',
         'format(LastLoginDate)',
       ],
       skinny: [
         'Name',
         'Username',
+        'Email',
         'Id',
       ],
     };
@@ -85,6 +91,12 @@ export default class UserGet extends SfdxCommand {
 
     query += (this.flags.name) ?
       filterKeyword() + ` Name LIKE '%${this.flags.name}%' ` : '';
+
+    query += (this.flags.email) ?
+      filterKeyword() + ` Email LIKE '%${this.flags.email}%' ` : '';
+    
+    query += (this.flags.username) ?
+      filterKeyword() + ` Username LIKE '%${this.flags.username}%' ` : '';
 
     query += (this.flags.profile) ?
       filterKeyword() + ` Profile.Name LIKE '%${this.flags.profile}%' ` : '';
