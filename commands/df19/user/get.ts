@@ -1,57 +1,104 @@
 import { flags, SfdxCommand } from '@salesforce/command';
-
-//import {Account} from '../../../shared/typeDefs';
-
-
-
-export default class AccountGet extends SfdxCommand {
+import util = require('util');
+import child_process = require('child_process');
+export default class UserGet extends SfdxCommand {
     
-  public static description = 'Get accounts by name'
+  public static description = 'gets users based on certain parameters';
 
   public static examples = [
-    'sfdx df19:account:get --name "Fake Account'
+    'sfdx df19:user:get',
+    'sfdx df19:user:get --active --name "john smith"',
+    'sfdx df19:user:get --active --profile admin',
+    'sfdx df19:user:get --active --userrole sales',
+    'sfdx df19:user:get --active --skinny',
+    'sfdx df19:user:get --active --outputcsv',
   ];
 
   protected static flagsConfig = {
-    // flag with a value (-n, --name=VALUE)
+    active: flags.boolean({
+      char: 'a',
+      description: 'only return active users',
+    }),
     name: flags.string({
-        char: 'n', 
-        description: 'the name of the account to find',
-        required: true
-    })
+      char: 'n',
+      description: 'return users whose name contains this value',
+    }),
+    profile: flags.string({
+      char: 'p',
+      description: 'return users whose profile name contains this value',
+    }),
+    userrole: flags.string({
+      char: 'r',
+      description: 'return users whose user role developer name contains this value',
+    }),
+    skinny: flags.boolean({
+      char: 's',
+      description: 'only returns the Username and Id of each result',
+    }),
+   
   };
 
-  // Comment this out if your command does not require an org username
   protected static requiresUsername = true;
 
-
   public async run(): Promise<AnyJson> {
-    interface Account {
+    /*interface Account {
         Id: string;
         Name: string;
-    }
+    }*/
     // 1) build query
-    const query: string = `Select Id, Name from Account WHERE Name = '${this.flags.name}'`;
-    // 2) run query
-    // this.org is guaranteed because requiresUsername=true, as opposed to supportsUsername
-    const conn = this.org.getConnection();
-    const result = await conn.query<Account>(query);
-    // 3) log results
-    //const name = this.flags.name || 'world';
+    const username = this.org.getUsername();
 
-    // Organization will always return one result, but this is an example of throwing an error
-    // The output and --json will automatically be handled for you.
-    if (!result.records || result.records.length <= 0) {
-      throw new Error(`no accounts found with the name: ${this.flags.name}`);
-    }
+    const fields = {
+      default: [
+        'FirstName',
+        'LastName',
+        'Name',
+        'Email',
+        'Username',
+        'Id',
+        'IsActive',
+        'format(LastLoginDate)',
+      ],
+      skinny: [
+        'Name',
+        'Username',
+        'Id',
+      ],
+    };
 
-    const accounts : Account[] = result.records;
-    accounts.forEach((account: Account) => {
-        this.ux.log(`Id: ${account.Id} | Name: $(account.Name}`);
-    })
+    let query = `SELECT ${
+      this.flags.skinny === true ? 
+        fields.skinny.toString() : fields.default.toString()} FROM User `;
 
-    // Return an object to be displayed with --json
-    return { orgId: this.org.getOrgId(), accounts }
+    let hasFilter: boolean = false;
+    const filterKeyword = (): string => {
+      if (hasFilter) {
+        return 'AND';
+      }
+
+      hasFilter = true;
+      return 'WHERE';
+    };
+
+    query += (this.flags.active || this.flags.active) ?
+      filterKeyword() + ` IsActive = ${this.flags.active} ` : '';
+
+    query += (this.flags.name) ?
+      filterKeyword() + ` Name LIKE '%${this.flags.name}%' ` : '';
+
+    query += (this.flags.profile) ?
+      filterKeyword() + ` Profile.Name LIKE '%${this.flags.profile}%' ` : '';
+
+    query += (this.flags.userrole) ?
+      filterKeyword() + ` UserRoleId != NULL AND UserRole.DeveloperName LIKE '%${this.flags.userrole}%' ` : '';
+
+    query += 'ORDER BY IsActive DESC, Name ASC';
+    const baseCommand = `sfdx force:data:soql:query --query "${query}" --targetusername ${username}`;
+
+    const exec = util.promisify(child_process.exec);
+    const process = await exec(baseCommand);
+    console.log(process.stdout);
+    
 
   }
 }
