@@ -47,7 +47,7 @@ export default class AccountGet extends SfdxCommand {
 
     const accounts : Account[] = result.records;
     accounts.forEach((account: Account) => {
-        this.ux.log(`Id: ${account.Id} | Name: $(account.Name}`);
+        this.ux.log(`Id: ${account.Id} | Name: ${account.Name}`);
     })
 
     // Return an object to be displayed with --json

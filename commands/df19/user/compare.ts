@@ -26,11 +26,7 @@ export default class UserGet extends SfdxCommand {
   protected static requiresUsername = false;
 
   public async run(): Promise<AnyJson> {
-    interface User {
-        Id: string;
-        Name: string;
-        IsActive: boolean;
-    }
+    
 
     let query = `SELECT Id, IsActive, Name FROM User`;
 
@@ -47,6 +43,8 @@ export default class UserGet extends SfdxCommand {
     //console.log('records', usersFromTarget.result.records);
     
     var results = [];
+    var userResults = [];
+
     usersFromSource.result.records.forEach(userFromSource => {
         var found = false;
         usersFromTarget.result.records.forEach(userFromTarget => {
@@ -56,10 +54,14 @@ export default class UserGet extends SfdxCommand {
         });
         if (found === false) {
             results.push(userFromSource.Name);
+            userResults.push({Id: userFromSource.Id, Name: userFromSource.Name, IsActive: userFromSource.IsActive});
         }      
     });
-    results.forEach(result => {
-        this.ux.log(result);
+    userResults.forEach(result => {
+        //this.ux.log(result);
+        
+        this.ux.log(`Id: "${result.Id}" | IsActive: "${result.IsActive}" | Name: "${result.Name}" `);
+        
     });
    
     //console.log('results' , results);
